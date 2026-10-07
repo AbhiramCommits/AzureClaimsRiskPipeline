@@ -1,0 +1,12 @@
+{
+  "run_as": {
+    "service_principal_name": "azure-claims-risk-sp"
+  },
+  "name": "AzureClaimsRisk-FeatureEngineering",
+  "spark_version": "13.3.x-cpu-ml-scala2.12",
+  "node_type_id": "Standard_DS3_v2",
+  "num_workers": 2,
+  "spark_python_task": {
+    "python_file": "src/claims_risk/features.py"
+  }
+}
