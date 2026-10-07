@@ -1,0 +1,4 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
+name: claims-risk-endpoint
+auth_mode: key
+description: Azure Claims Risk Managed Online Endpoint

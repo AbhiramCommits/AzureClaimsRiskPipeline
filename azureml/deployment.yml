@@ -1,0 +1,13 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: blue
+endpoint_name: claims-risk-endpoint
+model:
+  name: claims-severity
+  version: 1
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+code_configuration:
+  code: ../src
+  scoring_script: claims_risk/batch_score.py
+instance_type: Standard_DS3_v2
+instance_count: 1
