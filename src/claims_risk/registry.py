@@ -1,8 +1,11 @@
-import os
 import json
-import mlflow
 from pathlib import Path
+
+import mlflow
+from mlflow.tracking import MlflowClient
+
 from claims_risk.config import Settings
+
 
 def main():
     settings = Settings()
@@ -10,37 +13,36 @@ def main():
 
     registry_path = Path("results/registry.json")
     if not registry_path.exists():
-        print("Registry file not found. Run training first.")
+        print("results/registry.json not found. Run training first.")
         return
+    registry = json.loads(registry_path.read_text())
 
-    with open(registry_path, "r") as f:
-        registry_data = json.load(f)
+    run_id = registry["best_run_id"]
+    model_name = registry["model_name"]
+    model_uri = registry["model_uri"]
 
-    run_id = registry_data["best_run_id"]
-    model_name = registry_data["model_name"]
-    model_uri = registry_data["model_uri"]
-
-    print(f"Registering MLflow model from run {run_id} under name '{model_name}'...")
-    
-    client = mlflow.tracking.MlflowClient()
+    client = MlflowClient()
     try:
         client.create_registered_model(model_name)
     except Exception:
         pass
 
-    model_version = client.create_model_version(
-        name=model_name,
-        source=model_uri,
-        run_id=run_id
-    )
+    version = client.create_model_version(name=model_name, source=model_uri, run_id=run_id)
+    # MLflow 3.x prefers aliases over legacy stages.
+    try:
+        client.set_registered_model_alias(model_name, "champion", version.version)
+    except Exception:
+        pass
+    try:
+        client.transition_model_version_stage(model_name, version.version, "Staging")
+    except Exception:
+        pass
 
-    client.transition_model_version_stage(
-        name=model_name,
-        version=model_version.version,
-        stage="Staging"
-    )
+    registry["registered_version"] = version.version
+    registry["alias"] = "champion"
+    registry_path.write_text(json.dumps(registry, indent=4))
+    print(f"Registered {model_name} version {version.version} (alias: champion) from run {run_id}")
 
-    print(f"Model version {model_version.version} registered and staged to Staging.")
 
 if __name__ == "__main__":
     main()

@@ -9,8 +9,9 @@ build/
 env/
 venv/
 mlruns/
+mlflow.db
 data/
-results/
+*.db
 .ipynb_checkpoints/
 .DS_Store
 .env

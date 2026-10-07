@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-import os
-import shutil
 from pathlib import Path
 from typing import Optional
 from claims_risk.config import Settings

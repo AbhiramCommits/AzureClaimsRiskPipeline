@@ -1,0 +1,38 @@
+{
+    "2023": {
+        "row_count": 2997901,
+        "global_mean": {
+            "actual_total_loss": 21240305394.420002,
+            "predicted_total_loss": 21297362618.476837,
+            "ae_ratio": 0.9973209253615594
+        },
+        "tweedie_glm": {
+            "actual_total_loss": 21240305394.420002,
+            "predicted_total_loss": 17985023480.75631,
+            "ae_ratio": 1.1809995920854255
+        },
+        "lightgbm": {
+            "actual_total_loss": 21240305394.420002,
+            "predicted_total_loss": 20347848653.576927,
+            "ae_ratio": 1.0438600048603266
+        }
+    },
+    "2024": {
+        "row_count": 3002331,
+        "global_mean": {
+            "actual_total_loss": 21173273157.31998,
+            "predicted_total_loss": 21328833743.240414,
+            "ae_ratio": 0.9927065592149531
+        },
+        "tweedie_glm": {
+            "actual_total_loss": 21173273157.31998,
+            "predicted_total_loss": 18010917250.96237,
+            "ae_ratio": 1.175579947555899
+        },
+        "lightgbm": {
+            "actual_total_loss": 21173273157.31998,
+            "predicted_total_loss": 20376101547.446228,
+            "ae_ratio": 1.0391228718613088
+        }
+    }
+}

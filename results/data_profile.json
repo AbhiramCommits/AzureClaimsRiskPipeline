@@ -1,0 +1,35 @@
+{
+    "row_count": 30000000,
+    "bytes_on_disk": 676363005,
+    "partition_count": 10,
+    "file_count": 4800,
+    "null_rates": {
+        "policy_id": 0.0,
+        "state": 0.0,
+        "occupancy_class": 0.0,
+        "equipment_type": 0.0,
+        "construction_type": 0.0199659,
+        "tiv": 0.0,
+        "building_age": 0.0,
+        "sprinkler_flag": 0.0,
+        "inspection_score": 0.01996413333333333,
+        "prior_claim_count": 0.0,
+        "deductible": 0.0,
+        "report_lag_days": 0.0,
+        "claim_count": 0.0,
+        "loss_amount": 0.0,
+        "policy_year": 0.0,
+        "peril": 0.0
+    },
+    "loss_amount_stats": {
+        "mean": 7084.637969200002,
+        "median": 0.0,
+        "p90": 12139.63,
+        "p99": 28424972.93,
+        "max": 28424972.93,
+        "zero_loss_share": 0.7971937666666666,
+        "gini_concentration": 0.705940885180175
+    },
+    "generation_wall_clock_seconds": 76.79233312606812,
+    "profiling_wall_clock_seconds": 60.37054395675659
+}

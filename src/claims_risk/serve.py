@@ -1,73 +1,110 @@
-import time
+import json
 import logging
+import time
+from pathlib import Path
+from typing import Any, Dict, List
+
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import mlflow
-import pandas as pd
-from pathlib import Path
-from claims_risk.config import Settings
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("scoring-service")
+from claims_risk.data import NUMERIC_FEATURES, CATEGORICAL_FEATURES
 
+logger = logging.getLogger("claims_risk.serve")
+logging.basicConfig(level=logging.INFO, format='{"ts": "%(asctime)s", "level": "%(levelname)s", "msg": "%(message)s"}')
+
+ARTIFACT_DIR = Path("results/model_artifacts")
+MODEL_VERSION = "claims-severity:1"
+
+
+class InputData(BaseModel):
+    input_data: Dict[str, Any]
+
+
+class ModelBundle:
+    def __init__(self) -> None:
+        self.severity = None
+        self.quantiles: Dict[str, Any] = {}
+        self.card: Dict[str, List[str]] = {}
+        self.loaded = False
+
+    def load(self) -> None:
+        try:
+            import lightgbm as lgb
+            self.severity = lgb.Booster(model_file=str(ARTIFACT_DIR / "severity.txt"))
+            for q in (50, 90, 99):
+                self.quantiles[str(q)] = lgb.Booster(model_file=str(ARTIFACT_DIR / f"quantile_{q}.txt"))
+            self.card = json.loads((ARTIFACT_DIR / "card.json").read_text())
+            self.loaded = True
+            logger.info("model loaded from %s", ARTIFACT_DIR)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("model not loaded (%s); service will return fallback scores", exc)
+
+    def _vector(self, columns: List[str], rows: List[List[Any]]) -> np.ndarray:
+        idx = {c: i for i, c in enumerate(columns)}
+        out = np.zeros((len(rows), len(NUMERIC_FEATURES) + len(CATEGORICAL_FEATURES)), dtype="float64")
+        for j, col in enumerate(NUMERIC_FEATURES):
+            if col in idx:
+                out[:, j] = [float(r[idx[col]]) for r in rows]
+        offset = len(NUMERIC_FEATURES)
+        for k, col in enumerate(CATEGORICAL_FEATURES):
+            cats = self.card.get(col, [])
+            mapping = {v: i for i, v in enumerate(cats)}
+            if col in idx:
+                out[:, offset + k] = [mapping.get(r[idx[col]], 0) for r in rows]
+        return out
+
+    def predict(self, columns: List[str], rows: List[List[Any]]) -> List[Dict[str, float]]:
+        if not self.loaded:
+            return [{"predicted_severity": 0.0, "p50": 0.0, "p90": 0.0, "p99": 0.0} for _ in rows]
+        X = self._vector(columns, rows)
+        sev = self.severity.predict(X)
+        p50 = self.quantiles["50"].predict(X)
+        p90 = self.quantiles["90"].predict(X)
+        p99 = self.quantiles["99"].predict(X)
+        return [
+            {
+                "predicted_severity": float(sev[i]),
+                "p50": float(p50[i]),
+                "p90": float(p90[i]),
+                "p99": float(p99[i]),
+            }
+            for i in range(len(rows))
+        ]
+
+
+bundle = ModelBundle()
 app = FastAPI(title="Azure Claims Risk Scoring API", version="1.0.0")
+bundle.load()
 
-model = None
 
 @app.on_event("startup")
-def load_model():
-    global model
-    try:
-        import json
-        with open("results/registry.json", "r") as f:
-            registry_data = json.load(f)
-        run_id = registry_data["best_run_id"]
-        model_path = mlflow.get_artifact_uri("model").replace("file://", "")
-        import lightgbm as lgb
-        model_file_path = Path(model_path.replace("file:", "")) / "model.txt"
-        model = lgb.Booster(model_file=str(model_file_path))
-        logger.info("Model successfully loaded into memory.")
-    except Exception as e:
-        logger.warning(f"Could not load model on startup: {e}")
+def _startup() -> None:
+    bundle.load()
 
-class AzureMLInput(BaseModel):
-    input_data: dict
 
 @app.get("/")
+def root() -> Dict[str, Any]:
+    return {"service": "claims-severity-scoring", "model_version": MODEL_VERSION, "model_loaded": bundle.loaded}
+
+
 @app.get("/health")
-def health_check():
-    return {"status": "healthy", "model_loaded": model is not None}
+def health() -> Dict[str, Any]:
+    return {"status": "healthy", "model_loaded": bundle.loaded}
+
 
 @app.post("/score")
-def score(payload: AzureMLInput):
-    global model
-    start_time = time.time()
+def score(payload: InputData) -> Dict[str, Any]:
+    start = time.perf_counter()
     try:
-        data_dict = payload.input_data
-        columns = data_dict.get("columns", [])
-        rows = data_dict.get("data", [])
-        
-        df = pd.DataFrame(rows, columns=columns)
-        
-        if model is not None:
-            preds = model.predict(df)
-        else:
-            preds = [1000.0] * len(rows)
-
-        results = []
-        for p in preds:
-            results.append({
-                "predicted_severity": float(p),
-                "p50": float(p),
-                "p90": float(p * 1.5),
-                "p99": float(p * 2.5),
-                "model_version": "1.0.0"
-            })
-
-        latency = (time.time() - start_time) * 1000.0
-        logger.info(f"Processed {len(rows)} rows in {latency:.2f} ms")
-
-        return {"predictions": results}
-    except Exception as e:
-        logger.error(f"Error during scoring: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        data = payload.input_data
+        columns = data["columns"]
+        rows = data["data"]
+        preds = bundle.predict(columns, rows)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=f"invalid input_data: {exc}")
+    latency_ms = (time.perf_counter() - start) * 1000.0
+    logger.info("scored %d rows in %.3f ms", len(rows), latency_ms)
+    for p in preds:
+        p["model_version"] = MODEL_VERSION
+    return {"predictions": preds, "latency_ms": latency_ms, "model_version": MODEL_VERSION}

@@ -1,0 +1,6 @@
+{
+    "scored_rows": 6000232,
+    "wall_clock_seconds": 12.603760004043579,
+    "throughput_rows_per_sec": 476066.82435043086,
+    "output_path": "data/lake/claims/scored"
+}

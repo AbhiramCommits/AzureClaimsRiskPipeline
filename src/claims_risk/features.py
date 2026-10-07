@@ -3,7 +3,6 @@ import time
 from pathlib import Path
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.window import Window
 
 from claims_risk.config import Settings
 from claims_risk.storage import get_lake_client
@@ -17,6 +16,9 @@ def main(spark: SparkSession = None):
     if spark is None:
         spark = SparkSession.builder \
             .appName("AzureClaimsRisk-Features") \
+            .config("spark.driver.memory", "8g") \
+            .config("spark.sql.shuffle.partitions", "64") \
+            .config("spark.sql.adaptive.enabled", "true") \
             .getOrCreate()
         created_spark = True
 
@@ -77,9 +79,11 @@ def main(spark: SparkSession = None):
     holdout_df = holdout_df.withColumn("tiv_x_sprinkler", F.col("log_tiv") * F.col("sprinkler_flag"))
 
     print("Writing feature splits to lake...")
-    lake_client.write_parquet(train_df, "claims/features/train", partition_cols=["policy_year"])
-    lake_client.write_parquet(valid_df, "claims/features/valid", partition_cols=["policy_year"])
-    lake_client.write_parquet(holdout_df, "claims/features/holdout", partition_cols=["policy_year"])
+    # Repartition by the write key so each parquet writer task handles fewer
+    # rows (avoids Java-heap OOM in the Parquet dictionary encoder).
+    lake_client.write_parquet(train_df.repartition(64, "policy_year"), "claims/features/train", partition_cols=["policy_year"])
+    lake_client.write_parquet(valid_df.repartition(16, "policy_year"), "claims/features/valid", partition_cols=["policy_year"])
+    lake_client.write_parquet(holdout_df.repartition(32, "policy_year"), "claims/features/holdout", partition_cols=["policy_year"])
 
     wall_clock = time.time() - start_time
 

@@ -4,7 +4,6 @@ import time
 from pathlib import Path
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType
 
 from claims_risk.config import Settings
 from claims_risk.storage import get_lake_client
@@ -34,12 +33,15 @@ def main():
         dfs = []
         remaining = n_rows
         chunk_idx = 0
+        chunk_size = 5_000_000
+        offset = 0
         while remaining > 0:
             current_rows = min(remaining, chunk_size)
             print(f"Generating chunk {chunk_idx + 1} with {current_rows:,} rows...")
-            chunk_df = generate_chunk(spark, current_rows, settings.seed + chunk_idx)
+            chunk_df = generate_chunk(spark, current_rows, settings.seed + chunk_idx, offset=offset)
             dfs.append(chunk_df)
             remaining -= current_rows
+            offset += current_rows
             chunk_idx += 1
         
         df = dfs[0]
@@ -55,15 +57,19 @@ def main():
     wall_clock = time.time() - start_time
     print(f"Data generation completed in {wall_clock:.2f} seconds.")
 
+    results_dir = Path("results")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    with open(results_dir / "generation.json", "w") as f:
+        json.dump({"rows_requested": n_rows, "generation_wall_clock_seconds": wall_clock}, f, indent=4)
+
     spark.stop()
 
-def generate_chunk(spark, n_rows, seed):
+def generate_chunk(spark, n_rows, seed, offset=0):
     # We generate base DataFrame using spark range and random sampling transformations
     df = spark.range(0, n_rows, numPartitions=max(8, n_rows // 1_000_000))
     
     # States (50 values with skew)
     states = [f"ST{i:02d}" for i in range(1, 51)]
-    state_weights = [1.5 if i < 10 else (1.0 if i < 30 else 0.5) for i in range(50)]
     
     # Occupancy classes (~20 values)
     occupancies = [
@@ -87,7 +93,7 @@ def generate_chunk(spark, n_rows, seed):
     
     # We can assign random categorical indices using hash or rand
     df = df.withColumn("rand_val", F.rand(seed=seed)) \
-           .withColumn("policy_id", F.concat(F.lit("POL-"), F.lpad(F.col("id").cast("string"), 10, "0"))) \
+           .withColumn("policy_id", F.concat(F.lit("POL-"), F.lpad((F.col("id") + F.lit(offset)).cast("string"), 12, "0"))) \
            .withColumn("policy_year", F.element_at(F.array([F.lit(y) for y in range(2015, 2025)]), F.floor(F.col("rand_val") * 10).cast("int") + 1)) \
            .withColumn("state_idx", (F.rand(seed=seed+1) * 50).cast("int")) \
            .withColumn("state", F.element_at(F.array([F.lit(s) for s in states]), F.col("state_idx") + 1)) \

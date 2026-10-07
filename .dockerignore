@@ -1,3 +1,11 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+data/
+mlruns/
+mlflow.db
+tests/
+.git/
+*.egg-info/
+htmlcov/
+.coverage

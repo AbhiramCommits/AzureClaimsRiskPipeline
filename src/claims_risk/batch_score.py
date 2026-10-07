@@ -1,47 +1,54 @@
-import os
 import json
-import mlflow
-import pandas as pd
+import time
 from pathlib import Path
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 from claims_risk.config import Settings
-from claims_risk.storage import get_lake_client
+from claims_risk.data import load_split, build_matrix
 
-def init():
-    global model
+
+def main():
     settings = Settings()
+
+    import mlflow
+    import mlflow.lightgbm
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
-    registry_path = Path("results/registry.json")
-    with open(registry_path, "r") as f:
-        registry_data = json.load(f)
-    model_path = mlflow.get_artifact_uri("model").replace("file://", "")
-    import lightgbm as lgb
-    model = lgb.Booster(model_file=str(Path(model_path.replace("file:", "")) / "model.txt"))
+    with open("results/registry.json") as f:
+        registry = json.load(f)
+    run_id = registry["best_run_id"]
+    model = mlflow.lightgbm.load_model(f"runs:/{run_id}/model")
 
-def run(raw_data):
-    try:
-        input_data = json.loads(raw_data)
-        columns = input_data.get("columns", [])
-        data = input_data.get("data", [])
-        df = pd.DataFrame(data, columns=columns)
-        preds = model.predict(df)
-        return json.dumps({"predictions": preds.tolist()})
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    t0 = time.time()
+    holdout = load_split(settings, "holdout")
+    X, _ = build_matrix(holdout)
+    y = holdout["loss_amount"].values.astype("float64")
+    n = len(X)
 
-def batch_score_spark():
-    settings = Settings()
-    lake_client = get_lake_client(settings)
-    
-    from pyspark.sql import SparkSession
-    spark = SparkSession.builder.appName("AzureClaimsRisk-BatchScore").getOrCreate()
-    
-    print("Reading holdout split for batch scoring...")
-    df = lake_client.read_parquet("claims/features/holdout")
-    
-    # Write scored results to lake
-    lake_client.write_parquet(df, "claims/scored", partition_cols=["policy_year"])
-    print("Batch scoring and write to lake complete.")
-    spark.stop()
+    preds = model.predict(X)
+    elapsed = time.time() - t0
+    throughput = n / elapsed if elapsed else 0.0
+
+    out = holdout[["policy_year", "loss_amount"]].copy()
+    out["predicted_severity"] = preds
+    out["residual"] = y - preds
+
+    out_dir = Path(settings.lake_root) / "claims" / "scored"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    table = pa.Table.from_pandas(out, preserve_index=False)
+    pq.write_to_dataset(table, root_path=str(out_dir), partition_cols=["policy_year"])
+
+    summary = {
+        "scored_rows": int(n),
+        "wall_clock_seconds": elapsed,
+        "throughput_rows_per_sec": throughput,
+        "output_path": str(out_dir),
+    }
+    with open("results/batch_score.json", "w") as f:
+        json.dump(summary, f, indent=4)
+    print(f"Batch scored {n:,} rows in {elapsed:.1f}s ({throughput:,.0f} rows/s) -> {out_dir}")
+
 
 if __name__ == "__main__":
-    batch_score_spark()
+    main()

@@ -56,6 +56,12 @@ def main():
 
     wall_clock = time.time() - start_time
 
+    gen_path = Path("results") / "generation.json"
+    generation_wall_clock = None
+    if gen_path.exists():
+        with open(gen_path, "r") as f:
+            generation_wall_clock = json.load(f).get("generation_wall_clock_seconds")
+
     profile_data = {
         "row_count": total_rows,
         "bytes_on_disk": total_bytes,
@@ -71,7 +77,8 @@ def main():
             "zero_loss_share": zero_loss_share,
             "gini_concentration": gini
         },
-        "generation_wall_clock_seconds": wall_clock
+        "generation_wall_clock_seconds": generation_wall_clock,
+        "profiling_wall_clock_seconds": wall_clock
     }
 
     results_dir = Path("results")

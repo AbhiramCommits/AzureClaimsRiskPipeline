@@ -1,0 +1,1 @@
+{"predictions":[{"predicted_severity":3870.5310687357023,"p50":0.0,"p90":9786.404249731831,"p99":29702.115107112837,"model_version":"claims-severity:1"}],"latency_ms":3.5607500000001124,"model_version":"claims-severity:1"}

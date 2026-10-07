@@ -1,0 +1,7 @@
+{
+    "run_id": "fffab6e909dc46a19cc937952de28cf7",
+    "best_val_loss": 9.280539512634277,
+    "train_rows": 3000000,
+    "target_clip_999": 756042.25,
+    "wall_clock_seconds": 405.9613697528839
+}

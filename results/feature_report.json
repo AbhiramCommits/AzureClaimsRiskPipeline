@@ -1,0 +1,14 @@
+{
+    "feature_count": 27,
+    "rows_per_split": {
+        "train": 21001550,
+        "valid": 2998218,
+        "holdout": 6000232
+    },
+    "encodings": {
+        "state_cardinality": 50,
+        "occupancy_cardinality": 20
+    },
+    "spark_wall_clock_seconds": 120.21123003959656,
+    "leakage_assertions_passed": true
+}
