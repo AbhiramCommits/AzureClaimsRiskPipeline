@@ -72,8 +72,9 @@ def main(spark: SparkSession = None):
     holdout_df = holdout_df.join(state_loss_lags, on="state", how="left").fillna({"state_mean_loss": 0.0, "state_loss_prob": 0.1})
 
     # Interaction terms
-    for d in [train_df, valid_df, holdout_df]:
-        d = d.withColumn("tiv_x_sprinkler", F.col("log_tiv") * F.col("sprinkler_flag"))
+    train_df = train_df.withColumn("tiv_x_sprinkler", F.col("log_tiv") * F.col("sprinkler_flag"))
+    valid_df = valid_df.withColumn("tiv_x_sprinkler", F.col("log_tiv") * F.col("sprinkler_flag"))
+    holdout_df = holdout_df.withColumn("tiv_x_sprinkler", F.col("log_tiv") * F.col("sprinkler_flag"))
 
     print("Writing feature splits to lake...")
     lake_client.write_parquet(train_df, "claims/features/train", partition_cols=["policy_year"])

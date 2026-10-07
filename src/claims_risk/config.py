@@ -8,7 +8,7 @@ class Settings:
     n_rows: int = field(default_factory=lambda: int(os.getenv("N_ROWS", "1000000")))  # default 1M for local test runner speed, overridable to 30M
     policy_years: list = field(default_factory=lambda: list(range(2015, 2025)))
     seed: int = field(default_factory=lambda: int(os.getenv("SEED", "42")))
-    mlflow_tracking_uri: str = field(default_factory=lambda: os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
+    mlflow_tracking_uri: str = field(default_factory=lambda: os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
     azure_storage_account: str = field(default_factory=lambda: os.getenv("AZURE_STORAGE_ACCOUNT", ""))
     azure_container: str = field(default_factory=lambda: os.getenv("AZURE_CONTAINER", "datalake"))
     azure_workspace: str = field(default_factory=lambda: os.getenv("AZURE_WORKSPACE", ""))
