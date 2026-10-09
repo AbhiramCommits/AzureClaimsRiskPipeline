@@ -3,19 +3,25 @@ import tempfile
 import time
 from pathlib import Path
 
-import numpy as np
-
 # IMPORTANT: import LightGBM before anything that could pull in scikit-learn's
 # OpenMP runtime. On macOS, loading both OpenMP runtimes in one process
 # deadlocks LightGBM training (see results/ notes in README).
 import lightgbm as lgb
-import mlflow
 import matplotlib
+import mlflow
+import numpy as np
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from claims_risk.config import Settings
-from claims_risk.data import load_split, build_matrix, apply_matrix, CATEGORICAL_FEATURES, TARGET_COL
+from claims_risk.data import (
+    CATEGORICAL_FEATURES,
+    TARGET_COL,
+    apply_matrix,
+    build_matrix,
+    load_split,
+)
 
 
 def _metrics(y_true, y_pred):

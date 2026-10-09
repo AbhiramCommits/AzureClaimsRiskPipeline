@@ -1,16 +1,16 @@
-from typing import List, Optional
+
 import pandas as pd
 import pyarrow.dataset as ds
 
 from claims_risk.config import Settings
 
-NUMERIC_FEATURES: List[str] = [
+NUMERIC_FEATURES: list[str] = [
     "log_tiv", "tiv_per_building_age", "building_age_winsor", "inspection_score_imputed",
     "prior_claim_count", "deductible", "report_lag_days", "state_freq", "occ_freq",
     "state_mean_loss", "state_loss_prob", "tiv_x_sprinkler", "sprinkler_flag",
 ]
 
-CATEGORICAL_FEATURES: List[str] = [
+CATEGORICAL_FEATURES: list[str] = [
     "state", "occupancy_class", "equipment_type", "construction_type_imputed", "peril",
 ]
 
@@ -24,7 +24,7 @@ def split_path(settings: Settings, split: str) -> str:
 def load_split(
     settings: Settings,
     split: str,
-    columns: Optional[List[str]] = None,
+    columns: list[str] | None = None,
     float32: bool = True,
 ) -> pd.DataFrame:
     """Read a feature split from the lake as a pandas DataFrame using pyarrow.
@@ -44,7 +44,7 @@ def load_split(
     return df
 
 
-def build_matrix(df: pd.DataFrame, cat_cardinalities: Optional[dict] = None):
+def build_matrix(df: pd.DataFrame, cat_cardinalities: dict | None = None):
     """Return (X, cat_cardinalities) where categoricals are integer codes.
 
     Encoders are fit on the frame passed in (callers pass the train frame first

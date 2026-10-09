@@ -2,15 +2,22 @@ import json
 import time
 from pathlib import Path
 
+import mlflow
 import numpy as np
 import torch
-import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
-import mlflow
+from torch import optim
+from torch.utils.data import DataLoader, TensorDataset
 
 from claims_risk.config import Settings
-from claims_risk.data import load_split, build_matrix, apply_matrix, NUMERIC_FEATURES, CATEGORICAL_FEATURES, TARGET_COL
-from claims_risk.models.tabular import TabularSeverityNet, GammaNLLLoss
+from claims_risk.data import (
+    CATEGORICAL_FEATURES,
+    NUMERIC_FEATURES,
+    TARGET_COL,
+    apply_matrix,
+    build_matrix,
+    load_split,
+)
+from claims_risk.models.tabular import GammaNLLLoss, TabularSeverityNet
 
 
 def _standardize(train_num: np.ndarray, other_num: np.ndarray):
@@ -39,7 +46,7 @@ def main():
 
     num_tr = Xtr[NUMERIC_FEATURES].values.astype("float32")
     num_va = Xva[NUMERIC_FEATURES].values.astype("float32")
-    num_tr, num_va, mu, sd = _standardize(num_tr, num_va)
+    num_tr, num_va, _mu, _sd = _standardize(num_tr, num_va)
 
     cat_names = [c for c in CATEGORICAL_FEATURES if c in Xtr.columns]
     cat_tr = np.stack([Xtr[c].values for c in cat_names], axis=1).astype("int64")

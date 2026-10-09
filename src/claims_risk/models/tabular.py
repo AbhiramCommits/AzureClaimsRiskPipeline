@@ -1,5 +1,6 @@
 import torch
-import torch.nn as nn
+from torch import nn
+
 
 class TabularSeverityNet(nn.Module):
     def __init__(self, num_numerics: int, cat_cardinalities: list, embedding_dims: list):

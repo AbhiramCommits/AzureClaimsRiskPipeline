@@ -21,9 +21,9 @@ def test_small_end_to_end(tmp_path, monkeypatch):
     )
     spark.sparkContext.setLogLevel("ERROR")
 
+    from claims_risk import features, generate
     from claims_risk.config import Settings
     from claims_risk.storage import get_lake_client
-    from claims_risk import generate, features
 
     settings = Settings()
     raw = generate.generate_chunk(spark, 50_000, settings.seed)
@@ -32,8 +32,9 @@ def test_small_end_to_end(tmp_path, monkeypatch):
     )
     features.main(spark)
 
-    from claims_risk.data import load_split, build_matrix, apply_matrix, TARGET_COL
     import lightgbm as lgb
+
+    from claims_risk.data import TARGET_COL, apply_matrix, build_matrix, load_split
 
     train = load_split(settings, "train")
     valid = load_split(settings, "valid")

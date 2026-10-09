@@ -1,7 +1,9 @@
+import contextlib
 import json
 from pathlib import Path
 
 import mlflow
+from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
 from claims_risk.config import Settings
@@ -22,21 +24,15 @@ def main():
     model_uri = registry["model_uri"]
 
     client = MlflowClient()
-    try:
+    with contextlib.suppress(MlflowException):  # already registered
         client.create_registered_model(model_name)
-    except Exception:
-        pass
 
     version = client.create_model_version(name=model_name, source=model_uri, run_id=run_id)
     # MLflow 3.x prefers aliases over legacy stages.
-    try:
+    with contextlib.suppress(MlflowException):
         client.set_registered_model_alias(model_name, "champion", version.version)
-    except Exception:
-        pass
-    try:
+    with contextlib.suppress(MlflowException):
         client.transition_model_version_stage(model_name, version.version, "Staging")
-    except Exception:
-        pass
 
     registry["registered_version"] = version.version
     registry["alias"] = "champion"

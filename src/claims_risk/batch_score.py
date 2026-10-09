@@ -6,7 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from claims_risk.config import Settings
-from claims_risk.data import load_split, build_matrix
+from claims_risk.data import build_matrix, load_split
 
 
 def main():

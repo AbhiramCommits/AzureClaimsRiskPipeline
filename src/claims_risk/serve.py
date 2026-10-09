@@ -2,13 +2,13 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from claims_risk.data import NUMERIC_FEATURES, CATEGORICAL_FEATURES
+from claims_risk.data import CATEGORICAL_FEATURES, NUMERIC_FEATURES
 
 logger = logging.getLogger("claims_risk.serve")
 logging.basicConfig(level=logging.INFO, format='{"ts": "%(asctime)s", "level": "%(levelname)s", "msg": "%(message)s"}')
@@ -18,14 +18,14 @@ MODEL_VERSION = "claims-severity:1"
 
 
 class InputData(BaseModel):
-    input_data: Dict[str, Any]
+    input_data: dict[str, Any]
 
 
 class ModelBundle:
     def __init__(self) -> None:
         self.severity = None
-        self.quantiles: Dict[str, Any] = {}
-        self.card: Dict[str, List[str]] = {}
+        self.quantiles: dict[str, Any] = {}
+        self.card: dict[str, list[str]] = {}
         self.loaded = False
 
     def load(self) -> None:
@@ -37,10 +37,10 @@ class ModelBundle:
             self.card = json.loads((ARTIFACT_DIR / "card.json").read_text())
             self.loaded = True
             logger.info("model loaded from %s", ARTIFACT_DIR)
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception as exc:  # noqa: BLE001  # pragma: no cover - defensive
             logger.warning("model not loaded (%s); service will return fallback scores", exc)
 
-    def _vector(self, columns: List[str], rows: List[List[Any]]) -> np.ndarray:
+    def _vector(self, columns: list[str], rows: list[list[Any]]) -> np.ndarray:
         idx = {c: i for i, c in enumerate(columns)}
         out = np.zeros((len(rows), len(NUMERIC_FEATURES) + len(CATEGORICAL_FEATURES)), dtype="float64")
         for j, col in enumerate(NUMERIC_FEATURES):
@@ -54,7 +54,7 @@ class ModelBundle:
                 out[:, offset + k] = [mapping.get(r[idx[col]], 0) for r in rows]
         return out
 
-    def predict(self, columns: List[str], rows: List[List[Any]]) -> List[Dict[str, float]]:
+    def predict(self, columns: list[str], rows: list[list[Any]]) -> list[dict[str, float]]:
         if not self.loaded:
             return [{"predicted_severity": 0.0, "p50": 0.0, "p90": 0.0, "p99": 0.0} for _ in rows]
         X = self._vector(columns, rows)
@@ -84,17 +84,17 @@ def _startup() -> None:
 
 
 @app.get("/")
-def root() -> Dict[str, Any]:
+def root() -> dict[str, Any]:
     return {"service": "claims-severity-scoring", "model_version": MODEL_VERSION, "model_loaded": bundle.loaded}
 
 
 @app.get("/health")
-def health() -> Dict[str, Any]:
+def health() -> dict[str, Any]:
     return {"status": "healthy", "model_loaded": bundle.loaded}
 
 
 @app.post("/score")
-def score(payload: InputData) -> Dict[str, Any]:
+def score(payload: InputData) -> dict[str, Any]:
     start = time.perf_counter()
     try:
         data = payload.input_data
