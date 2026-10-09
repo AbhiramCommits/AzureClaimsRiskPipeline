@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from claims_risk.config import Settings
-from claims_risk.data import load_split, build_matrix, apply_matrix, TARGET_COL
+from claims_risk.data import TARGET_COL, apply_matrix, build_matrix, load_split
 
 
 def main():

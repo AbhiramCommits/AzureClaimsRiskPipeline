@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
+
 from claims_risk.config import Settings
+
 
 class LakeClient(ABC):
     @abstractmethod
-    def write_parquet(self, df, relpath: str, partition_cols: Optional[list] = None, mode: str = "overwrite"):
+    def write_parquet(self, df, relpath: str, partition_cols: list | None = None, mode: str = "overwrite"):
         pass
 
     @abstractmethod
@@ -29,7 +30,7 @@ class LocalLakeClient(LakeClient):
     def _full_path(self, relpath: str) -> str:
         return str(self.root / relpath.lstrip("/"))
 
-    def write_parquet(self, df, relpath: str, partition_cols: Optional[list] = None, mode: str = "overwrite"):
+    def write_parquet(self, df, relpath: str, partition_cols: list | None = None, mode: str = "overwrite"):
         path = self._full_path(relpath)
         writer = df.write.mode(mode)
         if partition_cols:
@@ -58,17 +59,17 @@ class AzureLakeClient(LakeClient):
         self.container_name = container_name
         # Azure SDK integration code path (guarded)
         try:
-            from azure.storage.filedatalake import DataLakeServiceClient
             from azure.identity import DefaultAzureCredential
+            from azure.storage.filedatalake import DataLakeServiceClient
             self.credential = DefaultAzureCredential()
             self.service_client = DataLakeServiceClient(
                 account_url=f"https://{account_name}.dfs.core.windows.net",
                 credential=self.credential
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - fall back to Spark abfss:// access only
             self.service_client = None
 
-    def write_parquet(self, df, relpath: str, partition_cols: Optional[list] = None, mode: str = "overwrite"):
+    def write_parquet(self, df, relpath: str, partition_cols: list | None = None, mode: str = "overwrite"):
         # When using Spark on Azure Databricks/Synapse, writing directly via Spark abfss:// is standard.
         # If falling back locally or running azure client directly:
         uri = self.abfss_uri(relpath)
@@ -95,11 +96,11 @@ class AzureLakeClient(LakeClient):
             filesystem_client = self.service_client.get_file_system_client(self.container_name)
             directory_client = filesystem_client.get_directory_client(relpath.lstrip("/"))
             return directory_client.exists()
-        except Exception:
+        except Exception:  # noqa: BLE001 - treat any SDK/auth error as missing
             return False
 
 
-def get_lake_client(settings: Optional[Settings] = None) -> LakeClient:
+def get_lake_client(settings: Settings | None = None) -> LakeClient:
     if settings is None:
         settings = Settings()
     if settings.storage_mode.lower() == "azure":

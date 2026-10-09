@@ -5,7 +5,7 @@ import mlflow
 import mlflow.lightgbm
 
 from claims_risk.config import Settings
-from claims_risk.data import load_split, build_matrix
+from claims_risk.data import build_matrix, load_split
 
 
 def export_artifacts(settings, registry_path="results/registry.json", out_dir="results/model_artifacts"):

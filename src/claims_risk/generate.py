@@ -2,11 +2,13 @@ import argparse
 import json
 import time
 from pathlib import Path
+
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 from claims_risk.config import Settings
 from claims_risk.storage import get_lake_client
+
 
 def main():
     parser = argparse.ArgumentParser(description="Generate synthetic insurance claims loss data using PySpark")

@@ -1,11 +1,16 @@
 import numpy as np
 import pytest
 
-from claims_risk.metrics import (
-    mae, rmse, gamma_deviance, pinball_loss, normalized_gini, calibration_stats,
-)
 from claims_risk.config import Settings
-from claims_risk.storage import get_lake_client, LocalLakeClient
+from claims_risk.metrics import (
+    calibration_stats,
+    gamma_deviance,
+    mae,
+    normalized_gini,
+    pinball_loss,
+    rmse,
+)
+from claims_risk.storage import LocalLakeClient, get_lake_client
 
 
 def test_mae_rmse_hand_computed():

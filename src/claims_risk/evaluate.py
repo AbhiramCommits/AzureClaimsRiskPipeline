@@ -2,9 +2,10 @@ import json
 import time
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -13,8 +14,15 @@ import mlflow
 import mlflow.lightgbm
 
 from claims_risk.config import Settings
-from claims_risk.data import load_split, build_matrix, apply_matrix, TARGET_COL
-from claims_risk.metrics import mae, rmse, gamma_deviance, pinball_loss, normalized_gini, calibration_stats
+from claims_risk.data import TARGET_COL, apply_matrix, build_matrix, load_split
+from claims_risk.metrics import (
+    calibration_stats,
+    gamma_deviance,
+    mae,
+    normalized_gini,
+    pinball_loss,
+    rmse,
+)
 
 MODEL_ORDER = ["global_mean", "tweedie_glm", "lightgbm"]
 

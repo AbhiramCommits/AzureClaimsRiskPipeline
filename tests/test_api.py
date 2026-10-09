@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+
 from claims_risk.serve import app
 
 client = TestClient(app)
